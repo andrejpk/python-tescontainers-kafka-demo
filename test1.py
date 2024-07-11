@@ -1,9 +1,8 @@
 from testcontainers.kafka import KafkaContainer
 
 from kafka.admin import KafkaAdminClient, NewTopic
-from kafka.errors import TopicAlreadyExistsError
 
-from pyspark.sql import SparkSession
+from pyspark.sql import SparkSession, Row
 from pyspark.sql.functions import to_json, struct
 from datetime import datetime, date
 
@@ -17,20 +16,18 @@ with KafkaContainer() as kafka:
 
 
    print('--- Creating the Kafka topic ---')
+
    kafkaTopic = "testTopic"
 
    admin_client = KafkaAdminClient(
     bootstrap_servers=kafkaConnectionString,
     client_id='test_client'
    )
-
-   topic_list = []
-   topic_list.append(NewTopic(name=kafkaTopic, num_partitions=1, replication_factor=1))
-
+   topic_list = [NewTopic(name=kafkaTopic, num_partitions=1, replication_factor=1)]
    adminResp = admin_client.create_topics(new_topics=topic_list, validate_only=False)
+
    print(f"Topic '{kafkaTopic}' created successfully.")
    print('response', adminResp)
-
 
    print("--- Starting Spark and creating test data ---")
 
@@ -39,7 +36,6 @@ with KafkaContainer() as kafka:
       .config("spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.1.2") \
       .getOrCreate()
 
-   from pyspark.sql import Row
 
    df = spark.createDataFrame([
       Row(a=1, b=2., c='string1', d=date(2000, 1, 1), e=datetime(2000, 1, 1, 12, 0)),
