@@ -12,8 +12,9 @@ with KafkaContainer() as kafka:
    kafkaConnectionString = kafka \
       .get_bootstrap_server()
 
-   print('Kafka connection string', kafkaConnectionString)
+   kafkaContainerID = kafka.get_container_id()
 
+   print('Kafka connection string', kafkaConnectionString)
 
    print('--- Creating the Kafka topic ---')
 
@@ -29,13 +30,12 @@ with KafkaContainer() as kafka:
    print(f"Topic '{kafkaTopic}' created successfully.")
    print('response', adminResp)
 
-   print("--- Starting Spark and creating test data ---")
+   print("--- Starting SparkSession and test data ---")
 
    spark = SparkSession.builder \
       .appName("KafkaTest") \
       .config("spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.1.2") \
       .getOrCreate()
-
 
    df = spark.createDataFrame([
       Row(a=1, b=2., c='string1', d=date(2000, 1, 1), e=datetime(2000, 1, 1, 12, 0)),
@@ -43,16 +43,20 @@ with KafkaContainer() as kafka:
       Row(a=4, b=5., c='string3', d=date(2000, 3, 1), e=datetime(2000, 1, 3, 12, 0))
    ])
 
-   df.show()
-   df.printSchema()
+   # df.show()
+   # df.printSchema()
+
+   print("--- Testing Topics ---")
+
+   print('kafka topics', admin_client.list_topics())
 
    print("--- Publishing test data to Kafka ---")
    # writing as a batch (not streaming here)
    ds = (df
-   .select(to_json(struct([df[x] for x in df.columns])).alias("value"))
-   .write
-   .format("kafka") 
-   .option("kafka.bootstrap.servers", kafkaConnectionString) 
-   .option("topic", kafkaTopic)
-   .save()
+      .select(to_json(struct([df[x] for x in df.columns])).alias("value"))
+      .write
+      .format("kafka") 
+      .option("kafka.bootstrap.servers", kafkaConnectionString) 
+      .option("topic", kafkaTopic)
+      .save()
    )
